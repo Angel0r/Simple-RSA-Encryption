@@ -39,15 +39,9 @@ int read_socket(int newSockfd) {
 	int k = 0;
 	while (1) {
 		int nbytes = recv(newSockfd, &buf[k], 1, 0);
-		if (nbytes == -1) {
-			break;
-		}
-		if (nbytes == 0) {
-			break;
-		}
-		if (k == 3) {
-			break;
-		}
+		if (nbytes == -1) {break;}
+		if (nbytes == 0) {break;}
+		if (k == 3) {break;}
 		k++;
 	}
 	unsigned long int i2 = ((unsigned long int) buf[0] << 24)
@@ -62,16 +56,13 @@ int read_socket(int newSockfd) {
 	return i;
 }
 int main(void) {
-	int process;
+	int process, newsockfd, xorint = 0;
 	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	int newsockfd;
 	struct sockaddr_in serv_addr, cli_addr;
 	socklen_t clilen;
 	unsigned char buffer[256];
 	signed char xorByteArray[2];
-	int xorint = 0;
-	unsigned char res = 0;
-	unsigned char fps = 0;
+	unsigned char res = 0, fps = 0;
 	bzero((char *) &serv_addr, sizeof(serv_addr));
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -99,12 +90,7 @@ int main(void) {
 			while (checkPrime(q) != 1) {
 				q = rand() % 1000;
 			}
-			int n = p * q;
-			int t = (p - 1) * (q - 1);
-			int e = gen_E(t);
-			int d = gen_D(e, t);
-			int htonle = htonl(e);
-			int htonln = (htonl(n));
+			int n = p * q, t = (p - 1) * (q - 1), e = gen_E(t), d = gen_D(e, t), htonle = htonl(e), htonln = (htonl(n));
 			write(newsockfd, (void *) &htonle, sizeof(e)); //Send e and n to client
 			write(newsockfd, (void *) &htonln, sizeof(n));
 			int xor = RSADecr(read_socket(newsockfd), d, n); //Receive XORKEY and decrypt
