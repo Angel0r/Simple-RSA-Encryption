@@ -31,11 +31,9 @@ char * strres(int re) {
 		return "640x360";
 	} else if (re == 4) {
 		return "800x450";
-
 	}
 	return "320x180";
 }
-
 int read_socket(int newSockfd) {
 	unsigned char buf[3];
 	int k = 0;
@@ -52,12 +50,10 @@ int read_socket(int newSockfd) {
 		}
 		k++;
 	}
-
 	unsigned long int i2 = ((unsigned long int) buf[0] << 24)
 			| ((unsigned long int) buf[1] << 16)
 			| ((unsigned long int) buf[2] << 8) | buf[3];
 	int i;
-
 	if (i2 <= 0x7fffffffu) {
 		i = i2;
 	} else {
@@ -65,9 +61,7 @@ int read_socket(int newSockfd) {
 	}
 	return i;
 }
-
 int main(void) {
-
 	int process;
 	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	int newsockfd;
@@ -82,12 +76,9 @@ int main(void) {
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	serv_addr.sin_port = htons(5005);
-
 	bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
-
 	listen(sockfd, 5);
 	clilen = sizeof(cli_addr);
-
 	for (;;) {
 		newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
 		bzero(buffer, 256);
@@ -104,56 +95,42 @@ int main(void) {
 				p = rand() % 1000;
 			}
 			syslog(LOG_INFO, "p= %d", p);
-
 			int q = rand() % 1000;
 			while (checkPrime(q) != 1) {
 				q = rand() % 1000;
 			}
-
 			int n = p * q;
 			int t = (p - 1) * (q - 1);
 			int e = gen_E(t);
 			int d = gen_D(e, t);
 			int htonle = htonl(e);
 			int htonln = (htonl(n));
-
 			write(newsockfd, (void *) &htonle, sizeof(e)); //Send e and n to client
 			write(newsockfd, (void *) &htonln, sizeof(n));
-
 			int xor = RSADecr(read_socket(newsockfd), d, n); //Receive XORKEY and decrypt
 			xorint = xor;
 			xorByteArray[0] = (signed char) (xorint & 0xFF);
 			xorByteArray[1] = (signed char) ((xorint >> 8 & 0xFF));
-
 			res = RSADecr(read_socket(newsockfd), d, n); //Receive RES and FPS from client and decrypt
 			fps = RSADecr(read_socket(newsockfd), d, n);
-
 			char * stringRES = strres(res);
 			char stringFPS[2];
 			sprintf(stringFPS, "%d", fps);
-			//syslog(LOG_INFO, "String Resolution received %s", stringRES);
-			//syslog(LOG_INFO, "String FPS received %s", stringFPS);
 			char* con1 = seq("resolution=", stringRES);
 			char* con2 = seq(con1, "&fps=");
 			camera = seq(con2, stringFPS);
-
 			media_stream *stream;
 			stream = capture_open_stream(IMAGE_JPEG, camera);
 			syslog(LOG_INFO, "stream Open");
 			while (1) {
 				media_frame *frame;
-
 				frame = capture_get_frame(stream);
 				void *data;
 				data = capture_frame_data(frame);
 				size_t frame_size = capture_frame_size(frame);
-				//syslog(LOG_INFO, "capture frame_size %d", frame_size);
 				int XORpicSize = ((int) frame_size) ^ xorint; //XOR encryption for image size
 				int size = htonl((int) XORpicSize);
-				//syslog(LOG_INFO, "trying to send frame encrypted size: %d",
-				//		size);
 				write(newsockfd, &size, sizeof(int));  //send size to client
-
 				int x;
 				unsigned char dataBufferEncr[frame_size];
 				int XORLength = sizeof(xorByteArray) / sizeof(xorByteArray[0]);
@@ -161,9 +138,7 @@ int main(void) {
 					dataBufferEncr[x] = ((unsigned char*) data)[x]
 							^ xorByteArray[(XORLength - 1) - (x % XORLength)]; ////XOR encryption for frame size
 				}
-				//syslog(LOG_INFO, "sent frame size");
 				write(newsockfd, &dataBufferEncr[0], frame_size);
-				//syslog(LOG_INFO, "received frame size");
 				capture_frame_free(frame);
 			}
 			capture_close_stream(stream);
@@ -175,12 +150,9 @@ int main(void) {
 	close(sockfd);
 	return (0);
 }
-
-//Checks if the numbers is prime and returns 1 or 0
 int checkPrime(int number) {
 	if (number <= 1)
 		return 0;
-
 	int i;
 	for (i = 2; i < number; i++) {
 		if (number % i == 0)
@@ -188,20 +160,13 @@ int checkPrime(int number) {
 	}
 	return 1;
 }
-
-/*
- Generates the relatively prime number to ((p-1) * (q-1))*/
 int gen_E(int t) {
-	//puts("Generating E...");
 	int e;
 	do {
 		e = rand() % t;
 	} while (GCD(e, t) != 1);
 	return e;
 }
-
-/*
- Generates D for the private key*/
 int gen_D(int e, int t) {
 	int returnTemp = 0;
 	int nt = 1;
@@ -230,9 +195,6 @@ int gen_D(int e, int t) {
 	}
 	return returnTemp;
 }
-
-/*
- Calculate if the two numbers share a divisor.*/
 int GCD(int e, int t) {
 	int c;
 	while (e != 0) {
@@ -250,7 +212,6 @@ int RSAEncr(int m, int n, int e) {
 	}
 	return (int) encryptedM;
 }
-
 int RSADecr(int mEnc, int d, int n) {
 	int j = 0;
 	long long int decryptedM = 1;
@@ -259,4 +220,3 @@ int RSADecr(int mEnc, int d, int n) {
 	}
 	return (int) decryptedM;
 }
-
